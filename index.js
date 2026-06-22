@@ -1,6 +1,6 @@
 import { connect } from "cloudflare:sockets";
-import init, { processVlessHeader } from "./pkg/vless_wasm.js";
-import wasm from "./pkg/vless_wasm_bg.wasm";
+import init, { processVlessHeader } from "./pkg/zr_wasm.js";
+import wasm from "./pkg/zr_wasm_bg.wasm";
 
 let parsedSocksCache = null;
 const decodeSecure = (encoded) => atob(encoded);
