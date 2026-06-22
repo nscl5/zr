@@ -5,8 +5,6 @@ compatibility_date = "2024-03-04"
 [build]
 command = "wasm-pack build --target web"
 
-[rules]
-upstream = "build"
 [[rules]]
 type = "CompiledWasm"
 globs = ["**/*.wasm"]
