@@ -3,7 +3,7 @@ import init, { processVlessHeader } from "./pkg/zr_wasm.js";
 import wasm from "./pkg/zr_wasm_bg.wasm";
 
 const decodeSecure = (encoded) => atob(encoded);
-const HTML_URL = "https://nirevil.github.io/zizifn/";
+const HTML_URL = "https://nscl5.github.io/zr/";
 
 const Config = {
   userID: "be0ff9df-1468-41a0-8865-796d1c6800db",
