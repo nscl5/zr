@@ -763,6 +763,15 @@
         return `vless://${userID}@${newHost}:${newPort}${queryString}#${encodeURIComponent(newName)}`;
       }
 
+      function processCustomCleanIPs(savedIps) {
+        const card = document.getElementById("custom-config-card");
+        const pre = document.getElementById("custom-configs-pre");
+        if (!card || !pre) return;
+
+        const lines = savedIps.split('\n').map(line => line.trim()).filter(line => line !== "");
+        const xrayBase = document.getElementById("xray-config")?.textContent || "";
+        const sbBase = document.getElementById("singbox-config")?.textContent || "";
+
         let customConfigs = [];
 
         lines.forEach((ip, index) => {
@@ -798,6 +807,7 @@
         } else {
           card.style.display = 'none';
         }
+      }
 
       async function loadNetworkInfo() {
         try {
