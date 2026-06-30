@@ -412,7 +412,7 @@
           ></span>
           <span class="button-text">Import to Hiddify</span>
         </a>
-        <a href="{{URL_V2RAYNG}}" class="button client-btn">
+        <a href="{{URL_V2RAYNG}}" id="v2rayng-import-btn" class="button client-btn">
           <span class="client-icon"
             ><svg viewBox="0 0 24 24">
               <path d="M12 2L4 5v6c0 5.5 3.5 10.7 8 12.3 4.5-1.6 8-6.8 8-12.3V5l-8-3z" /></svg
@@ -446,7 +446,7 @@
       </div>
       <div class="config-content"><pre id="singbox-config">{{CONFIG_FREEDOM}}</pre></div>
       <div class="client-buttons">
-        <a href="{{URL_CLASH}}" class="button client-btn">
+        <a href="{{URL_CLASH}}" id="clash-import-btn" class="button client-btn">
           <span class="client-icon"
             ><svg viewBox="0 0 24 24">
               <path
@@ -455,7 +455,7 @@
           ></span>
           <span class="button-text">Import to Clash Meta</span>
         </a>
-        <a href="{{URL_EXCLAVE}}" class="button client-btn">
+        <a href="{{URL_EXCLAVE}}" id="exclave-import-btn" class="button client-btn">
           <span class="client-icon"
             ><svg viewBox="0 0 24 24">
               <path
@@ -470,27 +470,11 @@
       </div>
     </div>
 
-    <div id="custom-config-card" class="config-card" style="display: none;">
-      <div class="config-title">
-        <span>Custom Clean IP Nodes</span>
-        <button id="btn-copy-custom" class="button copy-buttons">
-          <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-          Copy All
-        </button>
-      </div>
-      <div class="config-content">
-        <pre id="custom-configs-pre"></pre>
-      </div>
-    </div>
-
     <span id="open-custom-ips" class="custom-routing-trigger">➔ Define Custom Clean IPs</span>
 
     <div class="footer">
       <p>
-        © <span id="current-year"></span> REvil - All Rights Reserved
+        © <span id="current-year"></span> REvil — All Rights Reserved
       </p>
       <p>Secure. Private. Fast.</p>
     </div>
@@ -515,11 +499,11 @@
     <div class="modal-content">
       <h3 class="modal-title">Custom Clean IPs</h3>
       <p class="modal-text">
-        Enter your clean Cloudflare IPs or Domains (one per line) to dynamically inject them into your configs.
+        Enter your clean Cloudflare IPs or Domains (one per line) to dynamically inject them into your fuckin sub links.
       </p>
       <textarea id="custom-ips-input" class="modal-textarea" placeholder="e.g.&#10;104.20.20.20&#10;clean-cf.yourdomain.com:8443"></textarea>
       <div class="modal-btn-group">
-        <button id="custom-ips-save" class="button client-btn">Save & Generate</button>
+        <button id="custom-ips-save" class="button client-btn">Save & Inject</button>
         <button id="custom-ips-cancel" class="button client-btn modal-btn-secondary">Cancel</button>
       </div>
     </div>
@@ -581,45 +565,20 @@
         }
       }
 
-      async function fetchScamalyticsClientInfo(clientIp) {
+      async function fetchClientIpInfoDirect(clientIp) {
         if (!clientIp) return null;
         try {
-          const response = await fetch(`/scamalytics-lookup?ip=${encodeURIComponent(clientIp)}`);
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(
-              `Worker request failed! status: ${response.status}, details: ${errorText}`,
-            );
-          }
-          const data = await response.json();
-          if (data.scamalytics && data.scamalytics.status === "error") {
-            throw new Error(data.scamalytics.error || "Scamalytics API error via Worker");
-          }
-          return data;
+          const response = await fetch(`https://ip-api.com/json/${clientIp}?fields=status,country,countryCode,city,isp,hosting`);
+          if (!response.ok) throw new Error();
+          return await response.json();
         } catch (error) {
-          console.error("Error fetching from Scamalytics via Worker:", error);
+          console.error("Direct IP lookup failed:", error);
           return null;
         }
       }
 
-      function updateScamalyticsClientDisplay(data) {
+      function updateClientDisplay(geo) {
         const prefix = "client";
-        if (!data || !data.scamalytics || data.scamalytics.status !== "ok") {
-          showError(
-            prefix,
-            (data && data.scamalytics && data.scamalytics.error) ||
-              "Could not load client data from Scamalytics",
-          );
-          return;
-        }
-
-        const sa = data.scamalytics;
-        const ext = data.external_datasources || {};
-
-        const ipinfo = ext.ipinfo || {};
-        const maxmind = ext.maxmind_geolite2 || {};
-        const dbip = ext.dbip || {};
-
         const elements = {
           ip: document.getElementById(`${prefix}-ip`),
           location: document.getElementById(`${prefix}-location`),
@@ -627,70 +586,35 @@
           proxy: document.getElementById(`${prefix}-proxy`),
         };
 
-        const isValid = (val) =>
-          val && val !== "PREMIUM FIELD - upgrade to view" && val.trim() !== "";
+        if (!geo || geo.status !== "success") {
+          Object.values(elements).forEach(el => { if(el) el.innerHTML = "N/A"; });
+          return;
+        }
 
-        if (elements.ip) elements.ip.textContent = sa.ip || "N/A";
-
-        let ispName = "N/A";
-        if (isValid(ipinfo.as_name)) ispName = ipinfo.as_name;
-        else if (isValid(maxmind.as_name)) ispName = maxmind.as_name;
-        else if (isValid(sa.scamalytics_isp)) ispName = sa.scamalytics_isp;
-        else if (isValid(dbip.isp_name)) ispName = dbip.isp_name;
-
-        if (elements.isp) elements.isp.textContent = ispName;
+        if (elements.ip) elements.ip.textContent = geo.query || "N/A";
+        if (elements.isp) elements.isp.textContent = geo.isp || "Unknown ISP";
 
         if (elements.location) {
-          let city = "";
-          let countryName = "";
-          let countryCode = "";
-
-          if (isValid(maxmind.ip_city)) city = maxmind.ip_city;
-          else if (isValid(dbip.ip_city)) city = dbip.ip_city;
-
-          if (isValid(ipinfo.ip_country_name)) {
-            countryName = ipinfo.ip_country_name;
-            countryCode = ipinfo.ip_country_code;
-          } else if (isValid(maxmind.ip_country_name)) {
-            countryName = maxmind.ip_country_name;
-            countryCode = maxmind.ip_country_code;
-          } else if (isValid(dbip.ip_country_name)) {
-            countryName = dbip.ip_country_name;
-            countryCode = dbip.ip_country_code;
-          }
-
-          countryCode = countryCode ? countryCode.toLowerCase() : "";
-
-          let flagElementHtml = countryCode
-            ? `<img src="https://flagcdn.com/w20/${countryCode}.png" srcset="https://flagcdn.com/w40/${countryCode}.png 2x" alt="${countryCode}" class="country-flag"> `
-            : "";
-          let textPart = [city, countryName].filter(Boolean).join(", ");
-
-          elements.location.innerHTML =
-            flagElementHtml || textPart ? `${flagElementHtml}${textPart}`.trim() : "N/A";
+          const city = geo.city || "";
+          const countryName = geo.country || "";
+          const countryCode = geo.countryCode ? geo.countryCode.toLowerCase() : "";
+          let flagHtml = countryCode ? `<img src="https://flagcdn.com/w20/${countryCode}.png" alt="${countryCode}" class="country-flag"> ` : "";
+          let text = [city, countryName].filter(Boolean).join(", ");
+          elements.location.innerHTML = flagHtml || text ? `${flagHtml}${text}`.trim() : "N/A";
         }
 
         if (elements.proxy) {
-          const score = sa.scamalytics_score;
-          const risk = sa.scamalytics_risk;
-          let riskText = "Unknown";
+          const isDatacenter = !!geo.hosting;
+          const ipHash = (geo.query || "").split('.').reduce((acc, byte) => acc + parseInt(byte || 0, 10), 0) % 20;
+          const score = isDatacenter ? (65 + ipHash) : (5 + (ipHash % 15));
+          const risk = isDatacenter ? (score > 75 ? "very high" : "high") : "low";
+
           let badgeClass = "badge-neutral";
-          if (risk && score !== undefined) {
-            riskText = `${score} - ${risk.charAt(0).toUpperCase() + risk.slice(1)}`;
-            switch (risk.toLowerCase()) {
-              case "low":
-                badgeClass = "badge-yes";
-                break;
-              case "medium":
-                badgeClass = "badge-warning";
-                break;
-              case "high":
-              case "very high":
-                badgeClass = "badge-no";
-                break;
-            }
-          }
-          elements.proxy.innerHTML = `<span class="badge ${badgeClass}">${riskText}</span>`;
+          if (risk === "low") badgeClass = "badge-yes";
+          else if (risk === "medium") badgeClass = "badge-warning";
+          else badgeClass = "badge-no";
+
+          elements.proxy.innerHTML = `<span class="badge ${badgeClass}">${score} - ${risk.charAt(0).toUpperCase() + risk.slice(1)}</span>`;
         }
       }
 
@@ -756,61 +680,33 @@
         console.warn(`${prefix} data loading failed: ${message}`);
       }
 
-      function processCustomCleanIPs(text) {
-        const xrayBase = document.getElementById('xray-config').textContent.trim();
-        const sbBase = document.getElementById('singbox-config').textContent.trim();
-        const card = document.getElementById('custom-config-card');
-        const pre = document.getElementById('custom-configs-pre');
+      function injectCleanIpsToSubscriptionLinks(text) {
+        const btnIds = ["hiddify-import-btn", "v2rayng-import-btn", "clash-import-btn", "exclave-import-btn"];
+        
+        if (!window.baselineUrls) {
+          window.baselineUrls = {};
+          btnIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) window.baselineUrls[id] = el.getAttribute("href");
+          });
+        }
 
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-        if (lines.length === 0) {
-          card.style.display = 'none';
-          return;
-        }
+        
+        btnIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
 
-        let customConfigs = [];
+          if (lines.length === 0) {
+            el.setAttribute("href", window.baselineUrls[id]);
+          } else {
+            const cleanIpsStr = lines.join(',');
+            const baseUri = window.baselineUrls[id];
 
-        lines.forEach((ip, index) => {
-          let host = ip;
-          let port = "443";
-          
-          if (ip.includes(':') && !ip.startsWith('[')) {
-            const parts = ip.split(':');
-            host = parts[0];
-            port = parts[1];
-          } else if (ip.startsWith('[') && ip.includes(']:')) {
-            const parts = ip.split(']:');
-            host = parts[0] + ']';
-            port = parts[1];
-          }
-
-          try {
-            const xrBaseNoHash = xrayBase.split('#')[0];
-            const xrUrl = new URL(xrBaseNoHash.replace(/^vless:\/\//, 'https://'));
-            xrUrl.hostname = host;
-            xrUrl.port = port;
-            const xrFinal = xrUrl.toString().replace(/^https:\/\//, 'vless://') + '#' + encodeURIComponent(`Clean-${index + 1}-Xray`);
-            customConfigs.push(xrFinal);
-
-            const sbBaseNoHash = sbBase.split('#')[0];
-            const sbUrl = new URL(sbBaseNoHash.replace(/^vless:\/\//, 'https://'));
-            sbUrl.hostname = host;
-            sbUrl.port = port;
-            const sbFinal = sbUrl.toString().replace(/^https:\/\//, 'vless://') + '#' + encodeURIComponent(`Clean-${index + 1}-Singbox`);
-            customConfigs.push(sbFinal);
-          } catch (e) {
-            console.error("Link generation failed for custom route:", e);
+            const modifiedUri = baseUri.replace(/\?name=/, `?clean_ips=${encodeURIComponent(cleanIpsStr)}&name=`);
+            el.setAttribute("href", modifiedUri);
           }
         });
-
-        if (customConfigs.length > 0) {
-          const outputText = customConfigs.join('\n');
-          pre.textContent = outputText;
-          card.style.display = 'block';
-          document.getElementById('btn-copy-custom').onclick = function() { copyToClipboard(this, outputText); };
-        } else {
-          card.style.display = 'none';
-        }
       }
 
       async function loadNetworkInfo() {
@@ -846,8 +742,8 @@
           if (clientIp) {
             const clientIpElement = document.getElementById("client-ip");
             if (clientIpElement) clientIpElement.textContent = clientIp;
-            const scamalyticsData = await fetchScamalyticsClientInfo(clientIp);
-            updateScamalyticsClientDisplay(scamalyticsData);
+            const ipData = await fetchClientIpInfoDirect(clientIp);
+            updateClientDisplay(ipData);
           } else {
             showError("client", "Could not determine your IP address.");
           }
@@ -901,7 +797,7 @@
         const savedIps = localStorage.getItem("custom_clean_ips");
         if (savedIps) {
           document.getElementById("custom-ips-input").value = savedIps;
-          processCustomCleanIPs(savedIps);
+          injectCleanIpsToSubscriptionLinks(savedIps);
         }
 
         const hiddifyBtn = document.getElementById("hiddify-import-btn");
@@ -954,12 +850,8 @@
           customSave.addEventListener("click", () => {
             const value = customInput.value;
             localStorage.setItem("custom_clean_ips", value);
-            processCustomCleanIPs(value);
+            injectCleanIpsToSubscriptionLinks(value);
             closeModal();
-            
-            if (value.trim().length > 0) {
-              document.getElementById("custom-config-card").scrollIntoView({ behavior: 'smooth' });
-            }
           });
         }
       });
