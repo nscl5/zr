@@ -544,11 +544,11 @@
       async function fetchClientIpInfoDirect(clientIp) {
         if (!clientIp) return null;
         try {
-          const response = await fetch(`https://freeipapi.com/api/json/${clientIp}`);
+          const response = await fetch(`/ip-lookup?ip=${encodeURIComponent(clientIp)}`);
           if (!response.ok) throw new Error();
           return await response.json();
         } catch (error) {
-          console.error("Direct IP lookup failed:", error);
+          console.error("Direct IP lookup failed via Worker proxy:", error);
           return null;
         }
       }
