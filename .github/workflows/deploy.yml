@@ -27,5 +27,5 @@ jobs:
             UUID
             PROXYIP
         env:
-          UUID: ${{ secrets.UUID }}
-          PROXYIP: ${{ secrets.PROXYIP }}
+          UUID: ${{ secrets.UUID || 'be0ff9df-1468-41a0-8865-796d1c6800db' }}
+          PROXYIP: ${{ secrets.PROXYIP || 'nima.nscl.ir' }}
